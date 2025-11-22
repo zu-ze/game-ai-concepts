@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://soccerdemo"]
+
+[ext_resource type="Script" path="res://concepts/04_soccer/soccer_demo.gd" id="1_soccer"]
+
+[node name="SoccerDemo" type="Node2D"]
+script = ExtResource("1_soccer")
