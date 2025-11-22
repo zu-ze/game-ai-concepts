@@ -129,6 +129,41 @@ func _calculate_weighted_sum() -> Vector2:
 func _on(bt: BehaviorType) -> bool:
 	return (flags & bt) == bt
 
+# Helper methods for cleaner API
+func seek_on() -> void: flags |= BehaviorType.SEEK
+func flee_on() -> void: flags |= BehaviorType.FLEE
+func arrive_on() -> void: flags |= BehaviorType.ARRIVE
+func wander_on() -> void: flags |= BehaviorType.WANDER
+func pursuit_on() -> void: flags |= BehaviorType.PURSUIT
+func evade_on() -> void: flags |= BehaviorType.EVADE
+func separation_on() -> void: flags |= BehaviorType.SEPARATION
+func alignment_on() -> void: flags |= BehaviorType.ALIGNMENT
+func cohesion_on() -> void: flags |= BehaviorType.COHESION
+func obstacle_avoidance_on() -> void: flags |= BehaviorType.OBSTACLE_AVOIDANCE
+func wall_avoidance_on() -> void: flags |= BehaviorType.WALL_AVOIDANCE
+func follow_path_on() -> void: flags |= BehaviorType.FOLLOW_PATH
+func interpose_on() -> void: flags |= BehaviorType.INTERPOSE
+func hide_on() -> void: flags |= BehaviorType.HIDE
+func offset_pursuit_on() -> void: flags |= BehaviorType.OFFSET_PURSUIT
+
+func seek_off() -> void: flags &= ~BehaviorType.SEEK
+func flee_off() -> void: flags &= ~BehaviorType.FLEE
+func arrive_off() -> void: flags &= ~BehaviorType.ARRIVE
+func wander_off() -> void: flags &= ~BehaviorType.WANDER
+func pursuit_off() -> void: flags &= ~BehaviorType.PURSUIT
+func evade_off() -> void: flags &= ~BehaviorType.EVADE
+func separation_off() -> void: flags &= ~BehaviorType.SEPARATION
+func alignment_off() -> void: flags &= ~BehaviorType.ALIGNMENT
+func cohesion_off() -> void: flags &= ~BehaviorType.COHESION
+func obstacle_avoidance_off() -> void: flags &= ~BehaviorType.OBSTACLE_AVOIDANCE
+func wall_avoidance_off() -> void: flags &= ~BehaviorType.WALL_AVOIDANCE
+func follow_path_off() -> void: flags &= ~BehaviorType.FOLLOW_PATH
+func interpose_off() -> void: flags &= ~BehaviorType.INTERPOSE
+func hide_off() -> void: flags &= ~BehaviorType.HIDE
+func offset_pursuit_off() -> void: flags &= ~BehaviorType.OFFSET_PURSUIT
+
+func all_off() -> void: flags = 0
+
 # Behaviors ----------------------------------------------------------
 
 func _seek(target: Vector2) -> Vector2:

@@ -15,12 +15,13 @@ var pitch_height: float = 500.0
 
 func _ready() -> void:
 	# Initialize goals
-	# Left Goal (Red Goal - defended by Red team? usually convention is Team Red defends left?)
-	# Let's say Team Red is on Left side, Team Blue on Right.
-	# So Red Defends Left Goal, Blue Defends Right Goal.
+	# Left Goal (Red Team defends left, Blue attacks left)
+	# Goal Line at x = 0
+	red_goal = Goal.new(Vector2(0, 180), Vector2(0, 320), Vector2(1, 0))
 	
-	red_goal = Goal.new(Vector2(40, 180), Vector2(40, 320), Vector2(1, 0))
-	blue_goal = Goal.new(Vector2(760, 180), Vector2(760, 320), Vector2(-1, 0))
+	# Right Goal (Blue Team defends right, Red attacks right)
+	# Goal Line at x = pitch_width (800)
+	blue_goal = Goal.new(Vector2(pitch_width, 180), Vector2(pitch_width, 320), Vector2(-1, 0))
 	
 	# Initialize Ball
 	ball = SoccerBall.new()
@@ -33,9 +34,14 @@ func _ready() -> void:
 	# Regions (Dividing the pitch into grid for strategy)
 	_create_regions(4, 3) # 4 cols, 3 rows
 	
-	# Initialize Teams (done by scene usually, or code)
-	# For now, we assume they are added as children or created here
-	pass
+	# Initialize Teams
+	red_team = SoccerTeam.new(self, SoccerTeam.TeamColor.RED, red_goal, blue_goal)
+	red_team.name = "RedTeam"
+	add_child(red_team)
+	
+	blue_team = SoccerTeam.new(self, SoccerTeam.TeamColor.BLUE, blue_goal, red_goal)
+	blue_team.name = "BlueTeam"
+	add_child(blue_team)
 
 func _create_walls() -> void:
 	# Top
@@ -67,12 +73,16 @@ func _process(delta: float) -> void:
 	if red_goal.check_score(ball):
 		print("Blue Team Scored!")
 		ball.position = Vector2(pitch_width/2, pitch_height/2)
-		ball.linear_velocity = Vector2.ZERO
+		ball.trap()
+		red_team.state_machine.change_state(SoccerTeam.PrepareForKickOff.new())
+		blue_team.state_machine.change_state(SoccerTeam.PrepareForKickOff.new())
 		
 	if blue_goal.check_score(ball):
 		print("Red Team Scored!")
 		ball.position = Vector2(pitch_width/2, pitch_height/2)
-		ball.linear_velocity = Vector2.ZERO
+		ball.trap()
+		red_team.state_machine.change_state(SoccerTeam.PrepareForKickOff.new())
+		blue_team.state_machine.change_state(SoccerTeam.PrepareForKickOff.new())
 
 func _draw() -> void:
 	# Draw Pitch
@@ -80,6 +90,20 @@ func _draw() -> void:
 	# Draw Lines
 	draw_line(Vector2(pitch_width/2, 0), Vector2(pitch_width/2, pitch_height), Color.WHITE, 2.0)
 	draw_circle(Vector2(pitch_width/2, pitch_height/2), 50.0, Color.WHITE, false, 2.0)
-	# Draw Goals
-	draw_rect(Rect2(0, 180, 40, 140), Color(1, 0.5, 0.5, 0.5))
-	draw_rect(Rect2(760, 180, 40, 140), Color(0.5, 0.5, 1, 0.5))
+	
+	# Draw Goal Areas (The "box" in front of goal)
+	# Red Goal Area (Left)
+	draw_rect(Rect2(0, 180, 40, 140), Color(1, 0.2, 0.2, 0.3), true) # Filled red box
+	draw_line(Vector2(40, 180), Vector2(40, 320), Color.WHITE, 2.0) # Front of box
+	draw_line(Vector2(0, 180), Vector2(40, 180), Color.WHITE, 2.0) # Top of box
+	draw_line(Vector2(0, 320), Vector2(40, 320), Color.WHITE, 2.0) # Bottom of box
+	
+	# Blue Goal Area (Right)
+	draw_rect(Rect2(pitch_width - 40, 180, 40, 140), Color(0.2, 0.2, 1, 0.3), true) # Filled blue box
+	draw_line(Vector2(pitch_width - 40, 180), Vector2(pitch_width - 40, 320), Color.WHITE, 2.0)
+	draw_line(Vector2(pitch_width, 180), Vector2(pitch_width - 40, 180), Color.WHITE, 2.0)
+	draw_line(Vector2(pitch_width, 320), Vector2(pitch_width - 40, 320), Color.WHITE, 2.0)
+	
+	# Goal Lines (Rear of box)
+	draw_line(Vector2(0, 180), Vector2(0, 320), Color.RED, 4.0)
+	draw_line(Vector2(pitch_width, 180), Vector2(pitch_width, 320), Color.BLUE, 4.0)

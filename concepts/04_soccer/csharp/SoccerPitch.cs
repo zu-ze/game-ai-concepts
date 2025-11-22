@@ -10,8 +10,8 @@ public partial class SoccerPitch : Node2D
     public Goal RedGoal { get; private set; }
     public Goal BlueGoal { get; private set; }
     
-    // public SoccerTeam RedTeam { get; set; }
-    // public SoccerTeam BlueTeam { get; set; }
+    public SoccerTeam RedTeam { get; private set; }
+    public SoccerTeam BlueTeam { get; private set; }
 
     public Dictionary<int, Region> Regions { get; private set; } = new Dictionary<int, Region>();
     public List<Wall> Walls { get; private set; } = new List<Wall>();
@@ -21,8 +21,8 @@ public partial class SoccerPitch : Node2D
 
     public override void _Ready()
     {
-        RedGoal = new Goal(new Vector2(40, 180), new Vector2(40, 320), new Vector2(1, 0));
-        BlueGoal = new Goal(new Vector2(760, 180), new Vector2(760, 320), new Vector2(-1, 0));
+        RedGoal = new Goal(new Vector2(0, 180), new Vector2(0, 320), new Vector2(1, 0));
+        BlueGoal = new Goal(new Vector2(PitchWidth, 180), new Vector2(PitchWidth, 320), new Vector2(-1, 0));
 
         Ball = new SoccerBall();
         Ball.Position = new Vector2(PitchWidth / 2, PitchHeight / 2);
@@ -30,6 +30,15 @@ public partial class SoccerPitch : Node2D
 
         CreateWalls();
         CreateRegions(4, 3);
+
+        // Create Teams
+        RedTeam = new SoccerTeam(this, SoccerTeam.TeamColor.Red, RedGoal, BlueGoal);
+        RedTeam.Name = "RedTeam";
+        AddChild(RedTeam);
+
+        BlueTeam = new SoccerTeam(this, SoccerTeam.TeamColor.Blue, BlueGoal, RedGoal);
+        BlueTeam.Name = "BlueTeam";
+        AddChild(BlueTeam);
     }
 
     private void CreateWalls()
@@ -66,12 +75,16 @@ public partial class SoccerPitch : Node2D
         {
             GD.Print("Blue Team Scored!");
             ResetBall();
+            RedTeam.StateMachine.ChangeState(new PrepareForKickOff());
+            BlueTeam.StateMachine.ChangeState(new PrepareForKickOff());
         }
 
         if (BlueGoal.CheckScore(Ball))
         {
             GD.Print("Red Team Scored!");
             ResetBall();
+            RedTeam.StateMachine.ChangeState(new PrepareForKickOff());
+            BlueTeam.StateMachine.ChangeState(new PrepareForKickOff());
         }
     }
 
@@ -86,7 +99,21 @@ public partial class SoccerPitch : Node2D
         DrawRect(new Rect2(0, 0, PitchWidth, PitchHeight), Colors.ForestGreen);
         DrawLine(new Vector2(PitchWidth / 2, 0), new Vector2(PitchWidth / 2, PitchHeight), Colors.White, 2.0f);
         DrawCircle(new Vector2(PitchWidth / 2, PitchHeight / 2), 50.0f, Colors.White, false, 2.0f);
-        DrawRect(new Rect2(0, 180, 40, 140), new Color(1, 0.5f, 0.5f, 0.5f));
-        DrawRect(new Rect2(760, 180, 40, 140), new Color(0.5f, 0.5f, 1, 0.5f));
+        
+        // Red Goal Area (Left)
+        DrawRect(new Rect2(0, 180, 40, 140), new Color(1, 0.2f, 0.2f, 0.3f), true);
+        DrawLine(new Vector2(40, 180), new Vector2(40, 320), Colors.White, 2.0f);
+        DrawLine(new Vector2(0, 180), new Vector2(40, 180), Colors.White, 2.0f);
+        DrawLine(new Vector2(0, 320), new Vector2(40, 320), Colors.White, 2.0f);
+
+        // Blue Goal Area (Right)
+        DrawRect(new Rect2(PitchWidth - 40, 180, 40, 140), new Color(0.2f, 0.2f, 1, 0.3f), true);
+        DrawLine(new Vector2(PitchWidth - 40, 180), new Vector2(PitchWidth - 40, 320), Colors.White, 2.0f);
+        DrawLine(new Vector2(PitchWidth, 180), new Vector2(PitchWidth - 40, 180), Colors.White, 2.0f);
+        DrawLine(new Vector2(PitchWidth, 320), new Vector2(PitchWidth - 40, 320), Colors.White, 2.0f);
+        
+        // Goal Lines
+        DrawLine(new Vector2(0, 180), new Vector2(0, 320), Colors.Red, 4.0f);
+        DrawLine(new Vector2(PitchWidth, 180), new Vector2(PitchWidth, 320), Colors.Blue, 4.0f);
     }
 }

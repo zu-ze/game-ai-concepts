@@ -31,4 +31,19 @@ public partial class PlayerBase : Vehicle
     {
         return Team.ControllingPlayer == this;
     }
+
+    public bool IsThreatened()
+    {
+        var opponents = (Team.Color == SoccerTeam.TeamColor.Red) ? Team.Pitch.BlueTeam.Players : Team.Pitch.RedTeam.Players;
+        float comfortRadiusSq = 50.0f * 50.0f;
+
+        foreach (var opp in opponents)
+        {
+            if (GlobalPosition.DistanceSquaredTo(opp.GlobalPosition) < comfortRadiusSq)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 }

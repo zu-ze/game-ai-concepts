@@ -14,4 +14,9 @@ public static class MessageTypes
 {
     public const string HiHoneyImHome = "HiHoneyImHome";
     public const string StewReady = "StewReady";
+    public const string GoHome = "GoHome";
+    public const string ReceiveBall = "ReceiveBall";
+    public const string PassToMe = "PassToMe";
+    public const string SupportAttacker = "SupportAttacker";
+    public const string Wait = "Wait";
 }

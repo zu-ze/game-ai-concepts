@@ -24,7 +24,7 @@ public class TendGoal : State<BaseGameEntity>
     public override void Enter(BaseGameEntity entity)
     {
         var p = (Goalkeeper)entity;
-        p.Steering.Flags = SteeringBehaviors.BehaviorType.Arrive;
+        p.Steering.ArriveOn();
     }
 
     public override void Execute(BaseGameEntity entity)
@@ -48,7 +48,7 @@ public class TendGoal : State<BaseGameEntity>
     public override void Exit(BaseGameEntity entity)
     {
         var p = (Goalkeeper)entity;
-        p.Steering.Flags = 0;
+        p.Steering.ArriveOff();
     }
     public override bool OnMessage(BaseGameEntity entity, Telegram telegram) { return false; }
 }
@@ -58,7 +58,7 @@ public class InterceptBall : State<BaseGameEntity>
     public override void Enter(BaseGameEntity entity)
     {
         var p = (Goalkeeper)entity;
-        p.Steering.Flags = SteeringBehaviors.BehaviorType.Arrive;
+        p.Steering.ArriveOn();
     }
 
     public override void Execute(BaseGameEntity entity)
@@ -77,7 +77,7 @@ public class InterceptBall : State<BaseGameEntity>
     public override void Exit(BaseGameEntity entity)
     {
         var p = (Goalkeeper)entity;
-        p.Steering.Flags = 0;
+        p.Steering.AllOff();
     }
     public override bool OnMessage(BaseGameEntity entity, Telegram telegram) { return false; }
 }

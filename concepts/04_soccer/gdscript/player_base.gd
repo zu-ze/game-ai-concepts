@@ -19,3 +19,14 @@ func is_closest_team_member_to_ball() -> bool:
 
 func is_controlling_ball() -> bool:
 	return team.controlling_player == self
+
+func is_threatened() -> bool:
+	# Check against all opponents
+	# If any opponent is within a comfort radius, return true
+	var opponents = team.pitch.blue_team.players if team.color == SoccerTeam.TeamColor.RED else team.pitch.red_team.players
+	var comfort_radius_sq = 50.0 * 50.0 # Arbitrary distance
+	
+	for opp in opponents:
+		if global_position.distance_squared_to(opp.global_position) < comfort_radius_sq:
+			return true
+	return false

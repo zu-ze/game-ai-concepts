@@ -120,6 +120,41 @@ public class SteeringBehaviors
         return (Flags & bt) == bt;
     }
 
+    // Helper methods
+    public void SeekOn() { Flags |= BehaviorType.Seek; }
+    public void FleeOn() { Flags |= BehaviorType.Flee; }
+    public void ArriveOn() { Flags |= BehaviorType.Arrive; }
+    public void WanderOn() { Flags |= BehaviorType.Wander; }
+    public void PursuitOn() { Flags |= BehaviorType.Pursuit; }
+    public void EvadeOn() { Flags |= BehaviorType.Evade; }
+    public void SeparationOn() { Flags |= BehaviorType.Separation; }
+    public void AlignmentOn() { Flags |= BehaviorType.Alignment; }
+    public void CohesionOn() { Flags |= BehaviorType.Cohesion; }
+    public void ObstacleAvoidanceOn() { Flags |= BehaviorType.ObstacleAvoidance; }
+    public void WallAvoidanceOn() { Flags |= BehaviorType.WallAvoidance; }
+    public void FollowPathOn() { Flags |= BehaviorType.FollowPath; }
+    public void InterposeOn() { Flags |= BehaviorType.Interpose; }
+    public void HideOn() { Flags |= BehaviorType.Hide; }
+    public void OffsetPursuitOn() { Flags |= BehaviorType.OffsetPursuit; }
+
+    public void SeekOff() { Flags &= ~BehaviorType.Seek; }
+    public void FleeOff() { Flags &= ~BehaviorType.Flee; }
+    public void ArriveOff() { Flags &= ~BehaviorType.Arrive; }
+    public void WanderOff() { Flags &= ~BehaviorType.Wander; }
+    public void PursuitOff() { Flags &= ~BehaviorType.Pursuit; }
+    public void EvadeOff() { Flags &= ~BehaviorType.Evade; }
+    public void SeparationOff() { Flags &= ~BehaviorType.Separation; }
+    public void AlignmentOff() { Flags &= ~BehaviorType.Alignment; }
+    public void CohesionOff() { Flags &= ~BehaviorType.Cohesion; }
+    public void ObstacleAvoidanceOff() { Flags &= ~BehaviorType.ObstacleAvoidance; }
+    public void WallAvoidanceOff() { Flags &= ~BehaviorType.WallAvoidance; }
+    public void FollowPathOff() { Flags &= ~BehaviorType.FollowPath; }
+    public void InterposeOff() { Flags &= ~BehaviorType.Interpose; }
+    public void HideOff() { Flags &= ~BehaviorType.Hide; }
+    public void OffsetPursuitOff() { Flags &= ~BehaviorType.OffsetPursuit; }
+
+    public void AllOff() { Flags = 0; }
+
     private Vector2 Seek(Vector2 target)
     {
         Vector2 desiredVelocity = (target - _vehicle.GlobalPosition).Normalized() * _vehicle.MaxSpeed;
