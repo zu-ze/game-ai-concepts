@@ -36,8 +36,8 @@ func _ready() -> void:
 		
 		# Visuals
 		var sprite = Sprite2D.new()
-		sprite.texture = load("res://icon.svg")
-		sprite.scale = Vector2(0.1, 0.1)
+		sprite.texture = load("res://ball.png")
+		sprite.scale = Vector2(0.075, 0.075)
 		sprite.modulate = Color.WHITE
 		add_child(sprite)
 		

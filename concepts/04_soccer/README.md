@@ -14,9 +14,9 @@ The system is built using a **Tiered AI** approach:
 #### `SoccerPitch`
 -   **Role**: The game environment manager.
 -   **Responsibilities**:
-    -   Owns the `SoccerBall`, `SoccerTeam`s (Red and Blue), `Goal`s, and `Region`s.
-    -   Manages walls and goal detection.
-    -   Visualizes the pitch, goals, and tactical regions.
+	-   Owns the `SoccerBall`, `SoccerTeam`s (Red and Blue), `Goal`s, and `Region`s.
+	-   Manages walls and goal detection.
+	-   Visualizes the pitch, goals, and tactical regions.
 
 #### `SoccerBall`
 -   **Role**: A physics-based entity representing the ball.
@@ -26,41 +26,41 @@ The system is built using a **Tiered AI** approach:
 #### `SoccerTeam`
 -   **Role**: Manages a group of players and high-level strategy.
 -   **FSM States**:
-    -   `PrepareForKickOff`: Resets positions after a goal.
-    -   `TeamDefending`: Players retract to defensive home regions.
-    -   `TeamAttacking`: Players push forward to offensive home regions.
+	-   `PrepareForKickOff`: Resets positions after a goal.
+	-   `TeamDefending`: Players retract to defensive home regions.
+	-   `TeamAttacking`: Players push forward to offensive home regions.
 -   **Tactical Methods**:
-    -   `DetermineBestSupportingSpot()`: Calculates optimal position for a supporting player.
-    -   `IsPassSafeFromAllOpponents()`: Physics-based check if an opponent can intercept a pass.
-    -   `CanShoot()`: Samples goal mouth to find open shot angles.
-    -   `FindPass()`: Evaluates teammates to find the best receiver.
+	-   `DetermineBestSupportingSpot()`: Calculates optimal position for a supporting player.
+	-   `IsPassSafeFromAllOpponents()`: Physics-based check if an opponent can intercept a pass.
+	-   `CanShoot()`: Samples goal mouth to find open shot angles.
+	-   `FindPass()`: Evaluates teammates to find the best receiver.
 
 #### `FieldPlayer`
 -   **Role**: Autonomous agent playing on the field.
 -   **FSM States**:
-    -   `Wait`: Idle, waiting for ball or request.
-    -   `ChaseBall`: Seeks the ball when closest.
-    -   `Dribble`: Advances ball towards goal with small kicks.
-    -   `KickBall`: Decides between Shooting, Passing (using `FindPass`), or Dribbling.
-    -   `ReceiveBall`: Moves to intercept a pass.
-    -   `SupportAttacker`: Moves to the Best Supporting Spot (BSS) to offer a passing option.
-    -   `ReturnToHome`: Moves to assigned tactical region.
+	-   `Wait`: Idle, waiting for ball or request.
+	-   `ChaseBall`: Seeks the ball when closest.
+	-   `Dribble`: Advances ball towards goal with small kicks.
+	-   `KickBall`: Decides between Shooting, Passing (using `FindPass`), or Dribbling.
+	-   `ReceiveBall`: Moves to intercept a pass.
+	-   `SupportAttacker`: Moves to the Best Supporting Spot (BSS) to offer a passing option.
+	-   `ReturnToHome`: Moves to assigned tactical region.
 
 #### `Goalkeeper`
 -   **Role**: Specialized agent protecting the goal.
 -   **FSM States**:
-    -   `TendGoal`: Moves along goal mouth to interpose ball.
-    -   `InterceptBall`: Charges ball if within range.
-    -   `PutBallBackInPlay`: Passes to nearest safe teammate after a save.
-    -   `ReturnHome`: Returns to goal area.
+	-   `TendGoal`: Moves along goal mouth to interpose ball.
+	-   `InterceptBall`: Charges ball if within range.
+	-   `PutBallBackInPlay`: Passes to nearest safe teammate after a save.
+	-   `ReturnHome`: Returns to goal area.
 
 #### `SupportSpotCalculator`
 -   **Role**: Helper class owned by `SoccerTeam`.
 -   **Logic**: Samples grid points on the pitch and scores them based on:
-    -   Pass Safety (can the attacker pass here?)
-    -   Shot Potential (can we shoot from here?)
-    -   Optimal Distance (~200px from attacker)
-    -   Upfield Advantage
+	-   Pass Safety (can the attacker pass here?)
+	-   Shot Potential (can we shoot from here?)
+	-   Optimal Distance (~200px from attacker)
+	-   Upfield Advantage
 
 ## 🧠 Key Algorithms
 

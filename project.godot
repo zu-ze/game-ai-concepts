@@ -14,6 +14,10 @@ config/name="Game AI Concepts"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+MessageDispatcher="*res://concepts/02_fsm/gdscript/message_dispatcher.gd"
+
 [dotnet]
 
 project/assembly_name="Game AI Concepts"

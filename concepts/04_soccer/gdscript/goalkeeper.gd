@@ -141,7 +141,7 @@ class PutBallBackInPlay extends State:
 		
 		for p in entity.team.players:
 			if p is FieldPlayer:
-				if entity.team.is_pass_safe(entity.global_position, p.global_position, p):
+				if entity.team.is_pass_safe_from_all_opponents(entity.global_position, p.global_position, p):
 					# Score by distance (further is better usually)
 					var score = entity.global_position.distance_to(p.global_position)
 					if score > best_score:

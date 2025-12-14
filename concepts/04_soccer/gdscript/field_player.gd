@@ -26,9 +26,9 @@ class FieldPlayerGlobalState extends State:
 	func execute(entity: Node) -> void:
 		# Slow down if controlling ball
 		if entity.is_controlling_ball():
-			entity.max_speed = 100.0
+			entity.max_speed = 300.0
 		else:
-			entity.max_speed = 150.0
+			entity.max_speed = 450.0
 		
 	func on_message(entity: Node, telegram: Telegram) -> bool:
 		if telegram.msg == MessageTypes.MSG_GO_HOME:

@@ -4,7 +4,7 @@ enum TeamColor { RED, BLUE }
 
 var color: TeamColor
 var players: Array[PlayerBase] = []
-var pitch: SoccerPitch
+var pitch: Node2D # Weakly typed to avoid cyclic dependency loop
 var home_goal: Goal
 var opponents_goal: Goal
 
@@ -17,7 +17,7 @@ var supporting_player: PlayerBase = null
 var receiver: PlayerBase = null
 var closest_player_to_ball: PlayerBase = null
 
-func _init(p_pitch: SoccerPitch, p_color: TeamColor, p_home_goal: Goal, p_opponents_goal: Goal) -> void:
+func _init(p_pitch: Node2D, p_color: TeamColor, p_home_goal: Goal, p_opponents_goal: Goal) -> void:
 	pitch = p_pitch
 	color = p_color
 	home_goal = p_home_goal
@@ -27,47 +27,70 @@ func _init(p_pitch: SoccerPitch, p_color: TeamColor, p_home_goal: Goal, p_oppone
 func _ready() -> void:
 	state_machine = StateMachine.new(self)
 	_create_players()
-	# Start in PrepareForKickOff to align positions initially
-	state_machine.set_current_state(PrepareForKickOff.new())
+	# Start in PrepareForKickOff, Red team gets the kickoff
+	state_machine.set_current_state(PrepareForKickOff.new(TeamColor.RED))
 
 func _create_players() -> void:
 	# 1 Goalkeeper + 4 Field Players
-	# Regions setup: 
-	# 0 1 2 3
-	# 4 5 6 7
-	# 8 9 10 11
+	# Regions setup (8 cols x 3 rows): 
+	# 0  1  2  3  4  5  6  7
+	# 8  9 10 11 12 13 14 15
+	# 16 17 18 19 20 21 22 23
+	# Midfield is between columns 3 and 4
 	
 	if color == TeamColor.RED:
-		# Red defends Left (regions 0, 4, 8, 1, 5, 9)
+		# Red defends Left (columns 0-3)
 		# Keeper
-		_add_player(Goalkeeper, 4) # Middle left
-		# Field
-		_add_player(FieldPlayer, 1) # Top def
-		_add_player(FieldPlayer, 9) # Bottom def
-		_add_player(FieldPlayer, 6) # Mid
-		_add_player(FieldPlayer, 7) # Forward
+		_add_player(Goalkeeper, 8) # Column 0, middle
+		# Field - keep all on left side initially
+		_add_player(FieldPlayer, 1) # Column 1, top
+		_add_player(FieldPlayer, 17) # Column 1, bottom
+		_add_player(FieldPlayer, 10) # Column 2, middle
+		_add_player(FieldPlayer, 11) # Column 3, middle (at midfield)
 	else:
-		# Blue defends Right
+		# Blue defends Right (columns 4-7)
 		# Keeper
-		_add_player(Goalkeeper, 7) # Middle right
-		# Field
-		_add_player(FieldPlayer, 2) # Top def
-		_add_player(FieldPlayer, 10) # Bottom def
-		_add_player(FieldPlayer, 5) # Mid
-		_add_player(FieldPlayer, 4) # Forward (relative to their side)
+		_add_player(Goalkeeper, 15) # Column 7, middle
+		# Field - keep all on right side initially
+		_add_player(FieldPlayer, 6) # Column 6, top
+		_add_player(FieldPlayer, 22) # Column 6, bottom
+		_add_player(FieldPlayer, 13) # Column 5, middle
+		_add_player(FieldPlayer, 12) # Column 4, middle (at midfield)
 
 func _add_player(type, region_id: int) -> void:
-	var p = type.new(self, region_id, 70.0, 150.0, 100.0, 5.0)
+	var p = type.new(self, region_id, 70.0, 450.0, 300.0, 5.0)
 	p.position = pitch.regions[region_id].center
+	
+	# Physics layers
+	# Layer 1: Walls
+	# Layer 2: Ball
+	# Layer 3: Players
+	p.collision_layer = 4  # Layer 3: Players
+	p.collision_mask = 1   # Collide with walls only
+	
+	# Collision shape
+	var collision = CollisionShape2D.new()
+	var shape = CircleShape2D.new()
+	shape.radius = p.bounding_radius
+	collision.shape = shape
+	p.add_child(collision)
 	
 	# Visuals
 	var sprite = Sprite2D.new()
-	sprite.texture = load("res://icon.svg")
-	sprite.scale = Vector2(0.3, 0.3)
-	if color == TeamColor.RED:
-		sprite.modulate = Color.RED
+	sprite.texture = load("res://player.png")
+	sprite.scale = Vector2(0.25, 0.25)
+	
+	# Color based on type and team
+	if type == Goalkeeper:
+		if color == TeamColor.RED:
+			sprite.modulate = Color.ORANGE_RED
+		else:
+			sprite.modulate = Color.CYAN
 	else:
-		sprite.modulate = Color.BLUE
+		if color == TeamColor.RED:
+			sprite.modulate = Color.RED
+		else:
+			sprite.modulate = Color.BLUE
 	p.add_child(sprite)
 	
 	players.append(p)
@@ -75,19 +98,18 @@ func _add_player(type, region_id: int) -> void:
 
 func _process(_delta: float) -> void:
 	_update_closest_player_to_ball()
-	_check_ball_control()
+	# Ball control is now managed by pitch authoritatively
 	state_machine.update()
 	_update_support_spot()
+	queue_redraw() # For debug labels
 
 func _update_support_spot() -> void:
 	# Only calculate if we are attacking (have control)
 	if controlling_player:
 		var best_spot = support_spot_calculator.determine_best_supporting_spot()
 		_determine_supporting_player(best_spot)
-		queue_redraw() # Debug viz
 	else:
 		supporting_player = null
-		queue_redraw()
 
 func _determine_supporting_player(best_spot: Vector2) -> void:
 	var closest_dist = INF
@@ -107,6 +129,35 @@ func _draw() -> void:
 	if supporting_player:
 		draw_circle(support_spot_calculator.best_supporting_spot, 10.0, Color.YELLOW)
 		draw_line(supporting_player.global_position, support_spot_calculator.best_supporting_spot, Color.YELLOW, 1.0, true)
+	
+	# Draw player labels for debugging
+	for i in range(players.size()):
+		var p = players[i]
+		var label = ""
+		
+		# Player type
+		if p is Goalkeeper:
+			label = "GK"
+		else:
+			label = "P%d" % i
+		
+		# Player state/role indicators
+		if p == controlling_player:
+			label += " [CTRL]"
+		elif p == supporting_player:
+			label += " [SUP]"
+		elif p == receiver:
+			label += " [RCV]"
+		elif p == closest_player_to_ball:
+			label += " [NEAR]"
+		
+		# Draw label above player
+		var label_pos = p.global_position - Vector2(0, 25)
+		var label_color = Color.RED if color == TeamColor.RED else Color.BLUE
+		if p is Goalkeeper:
+			label_color = Color.ORANGE_RED if color == TeamColor.RED else Color.CYAN
+		
+		draw_string(ThemeDB.fallback_font, label_pos, label, HORIZONTAL_ALIGNMENT_CENTER, -1, 10, label_color)
 
 func _update_closest_player_to_ball() -> void:
 	var closest_dist = INF
@@ -250,17 +301,6 @@ func request_pass(requester: PlayerBase) -> void:
 func get_support_spot() -> Vector2:
 	return support_spot_calculator.best_supporting_spot
 
-func _check_ball_control() -> void:
-	controlling_player = null
-	var dist_threshold = 20.0 * 20.0
-	
-	# Simple check: if closest is close enough, they control it
-	if closest_player_to_ball:
-		if closest_player_to_ball.global_position.distance_squared_to(pitch.ball.global_position) < dist_threshold:
-			controlling_player = closest_player_to_ball
-			pitch.ball.owner_player = controlling_player
-			pitch.ball.trap() # Stop ball so they can dribble/kick
-
 func update_targets_of_waiting_players() -> void:
 	for p in players:
 		if p is FieldPlayer:
@@ -271,6 +311,10 @@ func update_targets_of_waiting_players() -> void:
 				# The Wait state sets velocity to zero.
 				# If we want them to move to new home immediately, we should message them "GoHome".
 				pass
+
+func set_player_home_region(player_idx: int, region_id: int) -> void:
+	if player_idx >= 0 and player_idx < players.size():
+		players[player_idx].home_region = region_id
 
 func return_all_field_players_to_home() -> void:
 	for p in players:
@@ -286,8 +330,28 @@ func all_players_at_home() -> bool:
 	return true
 
 # States ---------------------------------------------------------
+# State classes are defined here to access SoccerTeam methods, 
+# but since they are inner classes in GDScript, they access outer scope variables naturally in Godot 4.
+# However, passing 'entity' (which is the team) is still the pattern we used.
+# The issue "Invalid call. Nonexistent function" usually means the entity passed is not cast correctly or the function is truly missing.
+# We just re-added set_player_home_region, so it should be there.
+# The error might be from a previous run if the user didn't reload or if the script wasn't saved properly?
+# Let's double check if I made a mistake in where I added the function.
+# It is added before "return_all_field_players_to_home". It looks correct.
+
+# Wait, in GDScript inner classes, they are just classes. They don't automatically have access to "outer" instance unless passed.
+# We are passing 'entity' as 'SoccerTeam'.
+# So `team.set_player_home_region` should work if `team` is `SoccerTeam`.
+
+# To be absolutely safe and clean, I will leave the structure as is, 
+# as I just added the missing function.
 
 class PrepareForKickOff extends State:
+	var kick_off_team: SoccerTeam.TeamColor
+	
+	func _init(p_kick_off_team: SoccerTeam.TeamColor = SoccerTeam.TeamColor.RED) -> void:
+		kick_off_team = p_kick_off_team
+	
 	func enter(entity: Node) -> void:
 		var team = entity as SoccerTeam
 		print(team.name, " entering PrepareForKickOff state")
@@ -303,8 +367,12 @@ class PrepareForKickOff extends State:
 		var team = entity as SoccerTeam
 		# Check if both teams are home
 		# For this simplified logic, just check this team
-		if team.all_players_at_home(): # AND opponent team is at home...
-			team.state_machine.change_state(TeamDefending.new())
+		if team.all_players_at_home():
+			# Team that kicks off goes to Attacking, other team to Defending
+			if team.color == kick_off_team:
+				team.state_machine.change_state(TeamAttacking.new())
+			else:
+				team.state_machine.change_state(TeamDefending.new())
 
 	func exit(entity: Node) -> void:
 		pass
@@ -314,23 +382,23 @@ class TeamDefending extends State:
 		var team = entity as SoccerTeam
 		print(team.name, " entering Defending state")
 		
-		# Set defending regions
-		# 0 1 2 3
-		# 4 5 6 7
-		# 8 9 10 11
+		# Set defending regions - stay on own side
+		# 0  1  2  3  4  5  6  7
+		# 8  9 10 11 12 13 14 15
+		# 16 17 18 19 20 21 22 23
 		
 		if team.color == SoccerTeam.TeamColor.RED:
-			# Defending Left
+			# Defending Left (columns 0-3)
 			team.set_player_home_region(1, 1) # Top def
-			team.set_player_home_region(2, 9) # Bottom def
-			team.set_player_home_region(3, 5) # Mid
-			team.set_player_home_region(4, 6) # Fwd (pulled back)
+			team.set_player_home_region(2, 17) # Bottom def
+			team.set_player_home_region(3, 10) # Mid
+			team.set_player_home_region(4, 11) # Forward at midfield
 		else:
-			# Defending Right
-			team.set_player_home_region(1, 2)
-			team.set_player_home_region(2, 10)
-			team.set_player_home_region(3, 6)
-			team.set_player_home_region(4, 5)
+			# Defending Right (columns 4-7)
+			team.set_player_home_region(1, 6) # Top def
+			team.set_player_home_region(2, 22) # Bottom def
+			team.set_player_home_region(3, 13) # Mid
+			team.set_player_home_region(4, 12) # Forward at midfield
 			
 	func execute(entity: Node) -> void:
 		var team = entity as SoccerTeam
@@ -346,17 +414,17 @@ class TeamAttacking extends State:
 		print(team.name, " entering Attacking state")
 		
 		if team.color == SoccerTeam.TeamColor.RED:
-			# Attacking Right
-			team.set_player_home_region(1, 5) # Top def moves up
-			team.set_player_home_region(2, 8) # Bottom def stays back a bit?
-			team.set_player_home_region(3, 6) # Mid moves up
-			team.set_player_home_region(4, 7) # Fwd pushes deep
+			# Attacking Right (push into columns 4-5)
+			team.set_player_home_region(1, 2) # Top def stays back
+			team.set_player_home_region(2, 18) # Bottom def stays back
+			team.set_player_home_region(3, 11) # Mid at midfield
+			team.set_player_home_region(4, 13) # Forward pushes into opponent half
 		else:
-			# Attacking Left
-			team.set_player_home_region(1, 6)
-			team.set_player_home_region(2, 3)
-			team.set_player_home_region(3, 5)
-			team.set_player_home_region(4, 4)
+			# Attacking Left (push into columns 2-3)
+			team.set_player_home_region(1, 5) # Top def stays back
+			team.set_player_home_region(2, 21) # Bottom def stays back
+			team.set_player_home_region(3, 12) # Mid at midfield
+			team.set_player_home_region(4, 10) # Forward pushes into opponent half
 
 	func execute(entity: Node) -> void:
 		var team = entity as SoccerTeam
