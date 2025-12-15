@@ -23,6 +23,9 @@ func handle_message(telegram: Telegram) -> bool:
 # States ---------------------------------------------------------
 
 class FieldPlayerGlobalState extends State:
+	func _init() -> void:
+		state_name = "FieldPlayerGlobal"
+	
 	func execute(entity: Node) -> void:
 		# Slow down if controlling ball
 		if entity.is_controlling_ball():
@@ -65,7 +68,11 @@ class FieldPlayerGlobalState extends State:
 		return false
 
 class Wait extends State:
+	func _init() -> void:
+		state_name = "Wait"
+	
 	func enter(entity: Node) -> void:
+		print("[%s P%d] ENTER Wait" % [entity.team.name, entity.team.players.find(entity)])
 		entity.velocity = Vector2.ZERO
 		entity.get_steering().all_off()
 		
@@ -73,6 +80,7 @@ class Wait extends State:
 		if entity.is_closest_team_member_to_ball() and \
 		   entity.team.receiver != entity and \
 		   not entity.team.pitch.ball.owner_player:
+			print("[%s P%d] Wait -> ChaseBall (closest to ball)" % [entity.team.name, entity.team.players.find(entity)])
 			entity.state_machine.change_state(ChaseBall.new())
 			return
 		
@@ -88,6 +96,9 @@ class Wait extends State:
 		pass
 
 class ReceiveBall extends State:
+	func _init() -> void:
+		state_name = "ReceiveBall"
+	
 	func enter(entity: Node) -> void:
 		entity.get_steering().arrive_on()
 		# Target set by message
@@ -106,48 +117,81 @@ class ReceiveBall extends State:
 		entity.team.receiver = null
 
 class ChaseBall extends State:
+	func _init() -> void:
+		state_name = "ChaseBall"
+	
 	func enter(entity: Node) -> void:
+		print("[%s P%d] ENTER ChaseBall - Ball at: %v" % [entity.team.name, entity.team.players.find(entity), entity.team.pitch.ball.global_position])
 		entity.get_steering().seek_on()
+		print("[%s P%d] Steering: Seek ON, max_speed=%.1f, max_force=%.1f" % [entity.team.name, entity.team.players.find(entity), entity.max_speed, entity.max_force])
 		
 	func execute(entity: Node) -> void:
-		entity.get_steering().target_pos = entity.team.pitch.ball.position
+		var ball_pos = entity.team.pitch.ball.global_position
+		entity.get_steering().target_pos = ball_pos
+		var dist_to_ball = entity.global_position.distance_to(ball_pos)
 		
 		if entity.is_controlling_ball():
+			print("[%s P%d] ChaseBall -> KickBall (controlling ball, dist: %.1f)" % [entity.team.name, entity.team.players.find(entity), dist_to_ball])
 			entity.state_machine.change_state(KickBall.new())
 			return
 			
 		if not entity.is_closest_team_member_to_ball():
+			print("[%s P%d] ChaseBall -> ReturnToHome (no longer closest)" % [entity.team.name, entity.team.players.find(entity)])
 			entity.state_machine.change_state(ReturnToHome.new())
 
 	func exit(entity: Node) -> void:
 		entity.get_steering().seek_off()
 
 class Dribble extends State:
+	func _init() -> void:
+		state_name = "Dribble"
+	
 	func enter(entity: Node) -> void:
+		print("[%s P%d] ENTER Dribble" % [entity.team.name, entity.team.players.find(entity)])
 		entity.team.controlling_player = entity
 		entity.get_steering().all_off()
 		
 	func execute(entity: Node) -> void:
+		# Cooldown check - prevent rapid dribble loops
+		var current_time = Time.get_ticks_msec() / 1000.0
+		if current_time - entity.last_dribble_time < 0.5: # 0.5 second cooldown
+			print("[%s P%d] DRIBBLE on cooldown (%.2fs ago), waiting..." % [
+				entity.team.name, 
+				entity.team.players.find(entity),
+				current_time - entity.last_dribble_time
+			])
+			return
+		
 		var ball = entity.team.pitch.ball
 		var goal_dir = (entity.team.opponents_goal.center - entity.global_position).normalized()
 		var dot = entity.heading.dot(goal_dir)
+		
+		# Use moderate force - between too weak (5) and too strong (150)
+		var dribble_force = 50.0
 		
 		if dot < 0.9: # Not facing goal well
 			# Swivel kick (kick sideways/angled)
 			# Simplified: Kick small angle towards goal
 			var kick_dir = goal_dir
-			ball.kick(kick_dir, 5.0) # Small nudge
+			print("[%s P%d] DRIBBLE swivel kick towards goal (dot: %.2f, force: %.1f)" % [entity.team.name, entity.team.players.find(entity), dot, dribble_force])
+			ball.kick(kick_dir, dribble_force, true)  # true = is_dribble
 		else:
 			# Kick forward
-			ball.kick(entity.heading, 10.0) # Small dribble
-			
+			print("[%s P%d] DRIBBLE forward kick (dot: %.2f, force: %.1f)" % [entity.team.name, entity.team.players.find(entity), dot, dribble_force])
+			ball.kick(entity.heading, dribble_force, true)  # true = is_dribble
+		
+		entity.last_dribble_time = current_time
 		entity.state_machine.change_state(ChaseBall.new())
 		
 	func exit(entity: Node) -> void:
 		pass
 
 class KickBall extends State:
+	func _init() -> void:
+		state_name = "KickBall"
+	
 	func enter(entity: Node) -> void:
+		print("[%s P%d] ENTER KickBall" % [entity.team.name, entity.team.players.find(entity)])
 		entity.velocity = Vector2.ZERO
 		entity.get_steering().all_off()
 		entity.team.controlling_player = entity
@@ -159,6 +203,7 @@ class KickBall extends State:
 		
 		# Can kick check
 		if dot < 0: # Ball behind
+			print("[%s P%d] KickBall -> ChaseBall (ball behind)" % [entity.team.name, entity.team.players.find(entity)])
 			entity.state_machine.change_state(ChaseBall.new())
 			return
 			
@@ -166,6 +211,7 @@ class KickBall extends State:
 		var shot_power = 300.0
 		var shot_info = entity.team.can_shoot(entity.global_position, shot_power)
 		if shot_info.can_shoot:
+			print("[%s P%d] SHOOTING at goal! Target: %v" % [entity.team.name, entity.team.players.find(entity), shot_info.target])
 			ball.kick(shot_info.target - entity.global_position, shot_power)
 			entity.state_machine.change_state(Wait.new())
 			return
@@ -177,6 +223,7 @@ class KickBall extends State:
 			var receiver = pass_info.receiver
 			var target = pass_info.target
 			
+			print("[%s P%d] PASSING to P%d at %v" % [entity.team.name, entity.team.players.find(entity), entity.team.players.find(receiver), target])
 			ball.kick(target - entity.global_position, 250.0)
 			entity.team.receiver = receiver
 			MessageDispatcher.dispatch_message(0, entity, receiver, MessageTypes.MSG_RECEIVE_BALL, {"target": target})
@@ -184,12 +231,16 @@ class KickBall extends State:
 			return
 			
 		# 3. Dribble
+		print("[%s P%d] KickBall -> Dribble (no shot/pass available)" % [entity.team.name, entity.team.players.find(entity)])
 		entity.state_machine.change_state(Dribble.new())
 
 	func exit(entity: Node) -> void:
 		pass
 
 class SupportAttacker extends State:
+	func _init() -> void:
+		state_name = "SupportAttacker"
+	
 	func enter(entity: Node) -> void:
 		entity.get_steering().arrive_on()
 		entity.get_steering().target_pos = entity.team.get_support_spot()
@@ -218,7 +269,12 @@ class SupportAttacker extends State:
 		entity.get_steering().all_off()
 
 class ReturnToHome extends State:
+	func _init() -> void:
+		state_name = "ReturnToHome"
+	
 	func enter(entity: Node) -> void:
+		var region = entity.team.pitch.regions[entity.home_region]
+		print("[%s P%d] ENTER ReturnToHome - Target: %v" % [entity.team.name, entity.team.players.find(entity), region.center])
 		entity.get_steering().arrive_on()
 		
 	func execute(entity: Node) -> void:
@@ -226,10 +282,13 @@ class ReturnToHome extends State:
 		entity.get_steering().target_pos = region.center
 		
 		if entity.is_closest_team_member_to_ball() and not entity.team.pitch.ball.owner_player:
+			print("[%s P%d] ReturnToHome -> ChaseBall (now closest)" % [entity.team.name, entity.team.players.find(entity)])
 			entity.state_machine.change_state(ChaseBall.new())
 			return
 			
+		var dist_to_home = entity.global_position.distance_to(region.center)
 		if entity.global_position.distance_squared_to(region.center) < 100:
+			print("[%s P%d] ReturnToHome -> Wait (reached home, dist: %.1f)" % [entity.team.name, entity.team.players.find(entity), dist_to_home])
 			entity.state_machine.change_state(Wait.new())
 
 	func exit(entity: Node) -> void:

@@ -2,6 +2,11 @@ class_name State extends RefCounted
 
 # Abstract Base Class for States
 
+var state_name: String = "State"
+
+func _init() -> void:
+	pass
+
 func enter(_entity: Node) -> void:
 	pass
 

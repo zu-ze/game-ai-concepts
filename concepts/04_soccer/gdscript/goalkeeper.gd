@@ -20,6 +20,9 @@ func handle_message(telegram: Telegram) -> bool:
 # States ---------------------------------------------------------
 
 class GlobalKeeperState extends State:
+	func _init() -> void:
+		state_name = "GlobalKeeper"
+	
 	func execute(entity: Node) -> void:
 		pass
 		
@@ -34,6 +37,9 @@ class GlobalKeeperState extends State:
 		return false
 
 class TendGoal extends State:
+	func _init() -> void:
+		state_name = "TendGoal"
+	
 	func enter(entity: Node) -> void:
 		entity.get_steering().interpose_on()
 		# Tend distance handled in execute?
@@ -83,6 +89,9 @@ class TendGoal extends State:
 		entity.get_steering().arrive_off()
 
 class InterceptBall extends State:
+	func _init() -> void:
+		state_name = "InterceptBall"
+	
 	func enter(entity: Node) -> void:
 		entity.get_steering().pursuit_on()
 		
@@ -108,6 +117,9 @@ class InterceptBall extends State:
 		entity.get_steering().all_off()
 
 class ReturnHome extends State:
+	func _init() -> void:
+		state_name = "ReturnHome"
+	
 	func enter(entity: Node) -> void:
 		entity.get_steering().arrive_on()
 		
@@ -122,6 +134,9 @@ class ReturnHome extends State:
 		entity.get_steering().arrive_off()
 
 class PutBallBackInPlay extends State:
+	func _init() -> void:
+		state_name = "PutBallBackInPlay"
+	
 	func enter(entity: Node) -> void:
 		entity.velocity = Vector2.ZERO
 		entity.team.controlling_player = entity

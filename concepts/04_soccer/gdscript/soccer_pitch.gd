@@ -102,6 +102,9 @@ func _process(delta: float) -> void:
 	# Update ball control FIRST (authoritative)
 	_update_ball_control(delta)
 	
+	# Force UI redraw every frame
+	queue_redraw()
+	
 	# Check Goals
 	if red_goal.check_score(ball):
 		blue_score += 1
@@ -197,7 +200,7 @@ func _draw_debug_info() -> void:
 	
 	var red_state = "Unknown"
 	if red_team.state_machine and red_team.state_machine.current_state:
-		red_state = red_team.state_machine.current_state.get_script().resource_path.get_file().get_basename()
+		red_state = red_team.state_machine.current_state.state_name
 	draw_string(ThemeDB.fallback_font, Vector2(x_pos, y_offset), "State: %s" % red_state, HORIZONTAL_ALIGNMENT_RIGHT, -1, 12, Color.WHITE)
 	y_offset += line_height
 	
@@ -225,7 +228,7 @@ func _draw_debug_info() -> void:
 	
 	var blue_state = "Unknown"
 	if blue_team.state_machine and blue_team.state_machine.current_state:
-		blue_state = blue_team.state_machine.current_state.get_script().resource_path.get_file().get_basename()
+		blue_state = blue_team.state_machine.current_state.state_name
 	draw_string(ThemeDB.fallback_font, Vector2(x_pos, y_offset), "State: %s" % blue_state, HORIZONTAL_ALIGNMENT_RIGHT, -1, 12, Color.WHITE)
 	y_offset += line_height
 	
@@ -268,8 +271,6 @@ func _draw_debug_info() -> void:
 	if controlling_team:
 		control_team = "Red" if controlling_team == red_team else "Blue"
 	draw_string(ThemeDB.fallback_font, Vector2(x_pos, y_offset), "Control: %s" % control_team, HORIZONTAL_ALIGNMENT_RIGHT, -1, 12, Color.WHITE)
-	
-	queue_redraw()
 
 func _update_ball_control(delta: float) -> void:
 	# Find closest player to ball from BOTH teams
@@ -295,9 +296,11 @@ func _update_ball_control(delta: float) -> void:
 	
 	# Control threshold
 	var control_threshold_sq = 20.0 * 20.0
+	var closest_dist = sqrt(closest_dist_sq)
 	
 	# Determine if anyone should have control
 	if closest_player and closest_dist_sq < control_threshold_sq:
+		print("[BALL] Closest player: %s P%d (dist: %.1f)" % [closest_team.name, closest_team.players.find(closest_player), closest_dist])
 		# Check cooldown to prevent rapid switching
 		var time_since_change = Time.get_ticks_msec() / 1000.0 - control_changed_time
 		
@@ -307,11 +310,12 @@ func _update_ball_control(delta: float) -> void:
 			if controlling_team != closest_team:
 				# Clear old team's control
 				if controlling_team != null:
+					print("[CONTROL] %s LOST ball control" % controlling_team.name)
 					controlling_team.controlling_player = null
 				
 				controlling_team = closest_team
 				control_changed_time = Time.get_ticks_msec() / 1000.0
-				print(controlling_team.name, " gained ball control")
+				print("[CONTROL] %s GAINED ball control (P%d)" % [controlling_team.name, controlling_team.players.find(closest_player)])
 			
 			# Update team's controlling_player
 			closest_team.controlling_player = closest_player

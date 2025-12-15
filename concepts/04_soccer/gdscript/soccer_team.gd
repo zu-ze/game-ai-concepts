@@ -58,8 +58,12 @@ func _create_players() -> void:
 		_add_player(FieldPlayer, 12) # Column 4, middle (at midfield)
 
 func _add_player(type, region_id: int) -> void:
-	var p = type.new(self, region_id, 70.0, 450.0, 300.0, 5.0)
+	# Add speed variation (±10% randomization)
+	var base_max_speed = 450.0 + randf_range(-45.0, 45.0)
+	var base_max_force = 300.0 + randf_range(-30.0, 30.0)
+	var p = type.new(self, region_id, 70.0, base_max_speed, base_max_force, 5.0)
 	p.position = pitch.regions[region_id].center
+	print("[%s] Created player type=%s region=%d speed=%.1f force=%.1f" % [name, type, region_id, base_max_speed, base_max_force])
 	
 	# Physics layers
 	# Layer 1: Walls
@@ -233,19 +237,23 @@ func can_shoot(from: Vector2, power: float) -> Dictionary:
 	var best_target = Vector2.ZERO
 	
 	# Check center first
-	if is_pass_safe_from_all_opponents(from, opponents_goal.center, null, power):
+	var center_safe = is_pass_safe_from_all_opponents(from, opponents_goal.center, null, power)
+	if center_safe:
 		result.can_shoot = true
 		result.target = opponents_goal.center
+		print("[%s] CAN SHOOT at center from %v!" % [name, from])
 		return result
 		
 	# Sample along goal line
 	for i in range(num_samples):
 		var t = randf()
 		var target = opponents_goal.left_post.lerp(opponents_goal.right_post, t)
+		var safe = is_pass_safe_from_all_opponents(from, target, null, power)
 		
-		if is_pass_safe_from_all_opponents(from, target, null, power):
+		if safe:
 			result.can_shoot = true
 			result.target = target
+			print("[%s] CAN SHOOT at sample %d from %v!" % [name, i, from])
 			return result # Return first valid for now
 			
 	return result
@@ -259,9 +267,11 @@ func find_pass(passer: PlayerBase, power: float, min_passing_dist: float = 50.0)
 		if p == passer: continue
 		
 		var dist = passer.global_position.distance_to(p.global_position)
-		if dist < min_passing_dist: continue
+		if dist < min_passing_dist: 
+			continue
 		
 		var pass_info = get_best_pass_to_receiver(passer, p, power)
+		
 		if pass_info.success:
 			# Score based on closeness to opponent goal
 			var score = pitch.pitch_width - pass_info.target.distance_to(opponents_goal.center) # Crude
@@ -273,7 +283,9 @@ func find_pass(passer: PlayerBase, power: float, min_passing_dist: float = 50.0)
 				best_score = score
 				best_result = pass_info
 				best_result["receiver"] = p
-				
+	
+	if best_result.success:
+		print("[%s] PASS FOUND to P%d!" % [name, players.find(best_result.receiver)])
 	return best_result
 
 func get_best_pass_to_receiver(passer: PlayerBase, receiver: PlayerBase, power: float) -> Dictionary:
@@ -350,6 +362,7 @@ class PrepareForKickOff extends State:
 	var kick_off_team: SoccerTeam.TeamColor
 	
 	func _init(p_kick_off_team: SoccerTeam.TeamColor = SoccerTeam.TeamColor.RED) -> void:
+		state_name = "PrepareForKickOff"
 		kick_off_team = p_kick_off_team
 	
 	func enter(entity: Node) -> void:
@@ -378,6 +391,9 @@ class PrepareForKickOff extends State:
 		pass
 
 class TeamDefending extends State:
+	func _init() -> void:
+		state_name = "TeamDefending"
+	
 	func enter(entity: Node) -> void:
 		var team = entity as SoccerTeam
 		print(team.name, " entering Defending state")
@@ -409,6 +425,9 @@ class TeamDefending extends State:
 		pass
 
 class TeamAttacking extends State:
+	func _init() -> void:
+		state_name = "TeamAttacking"
+	
 	func enter(entity: Node) -> void:
 		var team = entity as SoccerTeam
 		print(team.name, " entering Attacking state")

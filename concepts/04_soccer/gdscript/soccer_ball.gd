@@ -10,10 +10,23 @@ const FRICTION_MAGNITUDE: float = 150.0 # pixels/sec^2? Adjust to feel.
 var old_pos: Vector2
 var owner_player: Node2D = null # The player currently controlling the ball
 
+# Pending kick to apply in next physics frame
+var pending_kick_velocity: Vector2 = Vector2.ZERO
+var has_pending_kick: bool = false
+
+# Debug tracking
+var last_position_log_time: float = 0.0
+var position_log_interval: float = 0.5 # Log every 0.5 seconds
+
 func _ready() -> void:
 	gravity_scale = 0 # Top-down 2D soccer
 	linear_damp = 0.0 # We implement custom friction
 	angular_damp = 1.0
+	mass = 1.0 # Explicitly set mass
+	lock_rotation = true # Top-down view, no rotation needed
+	freeze = false # Ensure ball is not frozen
+	sleeping = false # Keep ball awake
+	can_sleep = false # Prevent automatic sleeping
 	
 	contact_monitor = true
 	max_contacts_reported = 4
@@ -43,7 +56,27 @@ func _ready() -> void:
 		
 	old_pos = global_position
 
+func _physics_process(delta: float) -> void:
+	# Log ball position and velocity periodically for debugging
+	var current_time = Time.get_ticks_msec() / 1000.0
+	if current_time - last_position_log_time >= position_log_interval:
+		if linear_velocity.length() > 1.0: # Only log if moving
+			var distance_moved = global_position.distance_to(old_pos)
+			var expected_distance = linear_velocity.length() * position_log_interval
+			print("[BALL MOVEMENT] Pos: %v, Vel: %v (%.1f px/s), Moved: %.2f px, Expected: %.2f px" % [
+				global_position, linear_velocity, linear_velocity.length(), distance_moved, expected_distance
+			])
+			old_pos = global_position
+		last_position_log_time = current_time
+
 func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
+	# Apply pending kick first (before friction)
+	if has_pending_kick:
+		state.linear_velocity = pending_kick_velocity
+		has_pending_kick = false
+		sleeping = false
+		print("  [PHYSICS] Applied kick velocity: %v (%.1f)" % [pending_kick_velocity, pending_kick_velocity.length()])
+	
 	# Apply constant friction (deceleration)
 	var vel = state.linear_velocity
 	var speed = vel.length()
@@ -55,20 +88,32 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 	
 	old_pos = global_position
 
-func kick(direction: Vector2, force: float) -> void:
+func kick(direction: Vector2, force: float, is_dribble: bool = false) -> void:
 	direction = direction.normalized()
-	# Force in this context is treated as an impulse that sets instantaneous velocity
-	# The book says u = a_kick. But typically Impuse = F * dt = m * dv. 
-	# If 'force' param here means the resulting speed (as used in previous code), we apply impulse mass * force.
-	# However, text says "acceleration a = F/m" where u is treated as initial acceleration? 
-	# "u is treated as the initial instantaneous acceleration applied by the force of the kick" -> u = F/m?
-	# That implies u is Velocity. So F must be Impulse.
-	# Let's assume the 'force' parameter passed in is the desired Force magnitude, and we calculate impulse or just set velocity?
-	# Simpler: apply_central_impulse(direction * force). 
-	# If force is "The kicking force", then Impulse = Force * dt? No, Kick is instantaneous.
-	# Let's treat 'force' param as "Impulse Magnitude".
 	
-	apply_central_impulse(direction * force)
+	var vel_before = linear_velocity
+	
+	# Calculate new velocity
+	var new_velocity = direction * force
+	
+	# Clamp maximum velocity to prevent runaway ball
+	var max_ball_speed = 600.0 # Reasonable maximum
+	if new_velocity.length() > max_ball_speed:
+		new_velocity = new_velocity.normalized() * max_ball_speed
+	
+	# Wake the ball up FIRST so _integrate_forces() will be called
+	sleeping = false
+	
+	# Set pending kick to be applied in next physics frame
+	pending_kick_velocity = new_velocity
+	has_pending_kick = true
+	
+	print("[BALL KICK] Pos: %v, Dir: %v, Force: %.1f, Dribble: %s, Mass: %.2f" % [global_position, direction, force, is_dribble, mass])
+	print("  VelBefore: %v (%.1f), VelPending: %v (%.1f), DeltaV: %.1f" % [
+		vel_before, vel_before.length(), 
+		new_velocity, new_velocity.length(),
+		(new_velocity - vel_before).length()
+	])
 	
 	# Clear owner when kicked
 	owner_player = null
